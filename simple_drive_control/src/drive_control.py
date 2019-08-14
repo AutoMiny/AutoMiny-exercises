@@ -3,16 +3,16 @@
 # --- imports ---
 import rospy
 from math import sqrt
-from autominy_msgs.msg import SpeedCommand, SteeringCommand
+from autominy_msgs.msg import SpeedCommand, NormalizedSteeringCommand
 from nav_msgs.msg import Odometry
-from std_msgs.msg import String
+from std_msgs.msg import String, Float32
 
 # --- definitions ---
 epsilon = 0.05   # allowed inaccuracy for distance calculation
-speed_rpm = 0.2
-angle_left = 0.4
+speed_rpm = 0.3
+angle_left = 1.0
 angle_straight = 0.0
-angle_right = 0.4
+angle_right = -1.0
 last_odom = None
 is_active = False
 
@@ -76,11 +76,11 @@ def drive(distance, command, speed, angle):
 
     # stop the car and set desired steering angle + speed
     speed_cmd = SpeedCommand()
-    speed_cmd.value = 0;
+    speed_cmd.value = 0
     pub_speed.publish(speed_cmd)
     rospy.sleep(1)
-    steering_cmd = SteeringCommand()
-    steering_cmd.value = angle;
+    steering_cmd = NormalizedSteeringCommand()
+    steering_cmd.value = angle
     pub_steering.publish(steering_cmd)
     rospy.sleep(1)
     speed_cmd.value = speed
@@ -96,7 +96,7 @@ def drive(distance, command, speed, angle):
         # rospy.loginfo("current distance = %f", current_distance)
         rospy.sleep(0.1)
 
-    speed_cmd.value = 0;
+    speed_cmd.value = 0
     pub_speed.publish(speed_cmd)
     is_active = False
     current_pos = last_odom.pose.pose.position
@@ -128,7 +128,7 @@ if rospy.has_param("speed_rpm"):
     speed_rpm = rospy.get_param("speed_rpm")
 
 # create subscribers and publishers
-sub_odom = rospy.Subscriber("/sensors/odometry/odom", Odometry, callbackOdom, queue_size=100)
+sub_odom = rospy.Subscriber("/sensors/localization/filtered_map", Odometry, callbackOdom, queue_size=100)
 # wait for first odometry message, till adverting subscription of commands
 waitForFirstOdom()
 sub_forward = rospy.Subscriber(
@@ -146,8 +146,8 @@ sub_backward_right = rospy.Subscriber(
 
 pub_speed = rospy.Publisher("/actuators/speed", SpeedCommand, queue_size=100)
 pub_steering = rospy.Publisher(
-    "/actuators/steering",
-    SteeringCommand,
+    "/actuators/steering_normalized",
+    NormalizedSteeringCommand,
     queue_size=100)
 pub_info = rospy.Publisher("simple_drive_control/info", String, queue_size=100)
 
