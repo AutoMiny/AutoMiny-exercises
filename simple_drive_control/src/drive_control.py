@@ -128,7 +128,7 @@ if rospy.has_param("speed_rpm"):
     speed_rpm = rospy.get_param("speed_rpm")
 
 # create subscribers and publishers
-sub_odom = rospy.Subscriber("/sensors/localization/filtered_map", Odometry, callbackOdom, queue_size=100)
+sub_odom = rospy.Subscriber("/sensors/odometry/odom", Odometry, callbackOdom, queue_size=100)
 # wait for first odometry message, till adverting subscription of commands
 waitForFirstOdom()
 sub_forward = rospy.Subscriber(
