@@ -5,6 +5,7 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point, PointStamped
 import scipy.interpolate
 import numpy as np
+from scipy.spatial.distance import cdist
 
 
 class Lane:
@@ -20,29 +21,20 @@ class Lane:
         return self.support_points[:, 0][-1]
 
     def interpolate(self, param):
-        return np.array([self.spline_x(param)[0], self.spline_y(param)[0]])
+        return np.column_stack((self.spline_x(param), self.spline_y(param)))
 
     def closest_point(self, point, precision=0.001, min_param=0.0, max_param=-1.0):
         step_size = 0.2
         if max_param < 0:
             max_param = self.length()
         closest_param = -1.0
-        closest_distance = float('+inf')
-        current_distance = 0.0
 
         while step_size > precision:
-            closest_distance = float('+inf')
-            closest_param = -1.0
-            i = min_param
-            while i <= max_param:
-                current_distance = np.sum(np.power(self.interpolate(i) - point, 2.0))
+            params = np.arange(min_param, max_param, step_size)
+            points = self.interpolate(params)
 
-                if closest_distance > current_distance:
-                    closest_distance = current_distance
-                    closest_param = i
-
-                i += step_size
-
+            closest_index = cdist([point], points, 'sqeuclidean').argmin()
+            closest_param = params[closest_index]
             min_param = max(min_param, closest_param - step_size)
             max_param = min(max_param, closest_param + step_size)
             step_size *= 0.5
@@ -84,7 +76,6 @@ class MapVisualization:
         self.rate = rospy.Rate(1)
 
         while not rospy.is_shutdown():
-
             i = 0
             for lane in self.map.lanes:
                 msg = Marker(type=Marker.LINE_STRIP, action=Marker.ADD)
@@ -97,7 +88,7 @@ class MapVisualization:
 
                 for i in range(int(lane.length() * 100.0)):
                     inter = lane.interpolate(i / 100.0)
-                    msg.points.append(Point(inter[0], inter[1], 0.0))
+                    msg.points.append(Point(inter[0][0], inter[0][1], 0.0))
                 i += 1
 
                 self.lane_pub.publish(msg)
@@ -118,8 +109,8 @@ class MapVisualization:
             msg.id = i
 
             p, param = lane.closest_point(point)
-            msg.pose.position.x = p[0]
-            msg.pose.position.y = p[1]
+            msg.pose.position.x = p[0][0]
+            msg.pose.position.y = p[0][1]
 
             i += 1
 
@@ -128,8 +119,8 @@ class MapVisualization:
             msg.color.b = 0.0
             msg.color.g = 1.0
             p, param = lane.lookahead_point(point, 0.5)
-            msg.pose.position.x = p[0]
-            msg.pose.position.y = p[1]
+            msg.pose.position.x = p[0][0]
+            msg.pose.position.y = p[0][1]
             msg.id = i
 
             i += 1

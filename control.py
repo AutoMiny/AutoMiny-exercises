@@ -131,15 +131,9 @@ class Navigation:
         lane = self.map.lanes[self.lane]
         pos = np.array([self.pose.pose.pose.position.x, self.pose.pose.pose.position.y])
         lookahead_point, param = lane.lookahead_point(pos, 0.7)
-        quat = [self.pose.pose.pose.orientation.x, self.pose.pose.pose.orientation.y, self.pose.pose.pose.orientation.z,
-                self.pose.pose.pose.orientation.w]
-        roll, pitch, yaw = tf.transformations.euler_from_quaternion(quat)
 
-        rot = np.array([[np.cos(-yaw), -np.sin(-yaw)], [np.sin(-yaw), np.cos(-yaw)]])
-        vec = lookahead_point - pos
-        vec = np.matmul(rot, vec)
-
-        desired_angle = math.atan2(vec[1], vec[0]) + yaw
+        vec = lookahead_point[0] - pos
+        desired_angle = math.atan2(vec[1], vec[0])
 
         speed_msg = SpeedCommand()
         speed_msg.header.frame_id = "base_link"
@@ -163,8 +157,8 @@ class Navigation:
         viz_msg.id = 1
         viz_msg.color.b = 0.0
         viz_msg.color.g = 1.0
-        viz_msg.pose.position.x = lookahead_point[0]
-        viz_msg.pose.position.y = lookahead_point[1]
+        viz_msg.pose.position.x = lookahead_point[0][0]
+        viz_msg.pose.position.y = lookahead_point[0][1]
         self.lookahead_pub.publish(viz_msg)
 
 

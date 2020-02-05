@@ -2,6 +2,7 @@ import rospy
 from nav_msgs.msg import Odometry
 from autominy_msgs.msg import NormalizedSteeringCommand, SteeringCommand
 import tf.transformations
+import math
 
 
 class SteeringPID:
@@ -51,7 +52,10 @@ class SteeringPID:
         quat = [self.pose.pose.pose.orientation.x, self.pose.pose.pose.orientation.y, self.pose.pose.pose.orientation.z,
                 self.pose.pose.pose.orientation.w]
         roll, pitch, yaw = tf.transformations.euler_from_quaternion(quat)
-        error = self.desired_angle - yaw
+
+        diff = self.desired_angle - yaw
+        # normalize steering angles (keep between -pi and pi)
+        error = math.atan2(math.sin(diff), math.cos(diff))
 
         self.integral_error += error * dt
         self.integral_error = max(self.min_i, self.integral_error)
