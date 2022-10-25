@@ -1,29 +1,32 @@
 #!/usr/bin/env python3
-import rospy
+import time
+
+import rclpy
+from rclpy.node import Node
 from math import sqrt
 from autominy_msgs.msg import SpeedCommand, NormalizedSteeringCommand
 from simple_drive_control.srv import DrivingManeuver
 from nav_msgs.msg import Odometry
 
 
-class DriveControl:
+class DriveControl(Node):
     def __init__(self):
+        super().__init__("simple_drive_control")
         self.speed = 0.3  # m/s
         self.angle_left = 0.9
         self.angle_straight = 0.0
         self.angle_right = -0.9
 
-        self.request_time = rospy.Time()  # to check for a timeout
+        self.request_time = self.get_clock().now()  # to check for a timeout
         self.timeout = 30  # timeout after this amount of seconds
         self.distance = 0.0  # current driven distance
         self.odom = None  # current position
         self.active = False
 
-        rospy.init_node("simple_drive_control")
-        self.speed_pub = rospy.Publisher("actuators/speed", SpeedCommand, queue_size=1)
-        self.steering_pub = rospy.Publisher("actuators/steering_normalized", NormalizedSteeringCommand, queue_size=1)
-        self.odom_sub = rospy.Subscriber("sensors/localization/filtered_map", Odometry, self.on_odom, queue_size=10)
-        self.service_client = rospy.Service("driving_maneuver", DrivingManeuver, self.drive, buff_size=1)
+        self.speed_pub = self.create_publisher(SpeedCommand, "actuators/speed", 1)
+        self.steering_pub = self.create_publisher(NormalizedSteeringCommand, "actuators/steering_normalized", 1)
+        self.odom_sub = self.create_subscription(Odometry, "sensors/localization/filtered_map", self.on_odom, 10)
+        self.service_client = self.create_service(DrivingManeuver, "driving_maneuver", self.drive)
 
     # calculates the distance if maneuver is active
     def on_odom(self, msg):
@@ -36,8 +39,8 @@ class DriveControl:
         self.odom = msg
 
     # executes maneuver synchronously
-    def drive(self, req):
-        self.request_time = rospy.Time.now()
+    def drive(self, req, resp):
+        self.request_time = self.get_clock().now()
         self.distance = 0
         self.active = True
 
@@ -50,7 +53,8 @@ class DriveControl:
         elif req.steering == "straight":
             steering_cmd.value = self.angle_straight
         else:
-            return False
+            resp.success = False
+            return resp
         self.steering_pub.publish(steering_cmd)
 
         # parse and send speed command
@@ -59,29 +63,39 @@ class DriveControl:
         elif req.direction == "backward":
             direction = -1.0
         else:
-            return False
+            resp.success = False
+            return resp
 
         speed_cmd = SpeedCommand()
         speed_cmd.value = self.speed * direction
         self.speed_pub.publish(speed_cmd)
 
+        self.get_logger().info(f"Executing maneuver direction: {req.direction} steering: {req.steering} distance: {req.distance}m")
+
         # check if there is a timeout
-        while not rospy.is_shutdown() and (rospy.Time.now() - self.request_time).to_sec() < self.timeout:
+        while rclpy.ok() and (self.get_clock().now() - self.request_time).nanoseconds / 1e9 < self.timeout:
             # wait until the car drove the desired distance and brake
             if self.distance >= req.distance:
                 self.active = False
-                speed_cmd.value = 0
+                speed_cmd.value = 0.0
                 self.speed_pub.publish(speed_cmd)
-                return True  # indicates success
-            rospy.sleep(0.01)
+                resp.success = True
+                return resp  # indicates success
+            time.sleep(0.01)
 
         # stop the car
-        speed_cmd.value = 0
+        speed_cmd.value = 0.0
         self.speed_pub.publish(speed_cmd)
+        self.get_logger().info("Timeout")
+        resp.success = False
+        return resp
 
-        return False
+
+def main(args=None):
+    rclpy.init(args=args)
+    rclpy.spin(DriveControl())
+    rclpy.shutdown()
 
 
 if __name__ == "__main__":
-    DriveControl()
-    rospy.spin()
+    main()
