@@ -2,9 +2,9 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from simple_parking_maneuver.srv import *
 from simple_drive_control.srv import *
-from rclpy.executors import MultiThreadedExecutor
 
 class SimpleParkingManeuver(Node):
 
@@ -22,6 +22,9 @@ class SimpleParkingManeuver(Node):
         # direction can be backward/forward, steering can be left/right/straight
         if request.direction == "left":
             self.driving_maneuver_client.call(DrivingManeuver.Request(direction="backward", steering="left", distance=0.3))
+            self.driving_maneuver_client.call(DrivingManeuver.Request(direction="backward", steering="right", distance=0.3))
+            self.driving_maneuver_client.call(DrivingManeuver.Request(direction="backward", steering="left", distance=0.3))
+            self.driving_maneuver_client.call(DrivingManeuver.Request(direction="backward", steering="right", distance=0.3))
             # TODO
         elif request.direction == "right":
             self.driving_maneuver_client.call(DrivingManeuver.Request(direction="backward", steering="left", distance=0.3))

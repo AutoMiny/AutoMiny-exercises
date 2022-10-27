@@ -3,6 +3,8 @@ import time
 
 import rclpy
 from rclpy.node import Node
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from math import sqrt
 from autominy_msgs.msg import SpeedCommand, NormalizedSteeringCommand
 from simple_drive_control.srv import DrivingManeuver
@@ -25,12 +27,13 @@ class DriveControl(Node):
 
         self.speed_pub = self.create_publisher(SpeedCommand, "actuators/speed", 1)
         self.steering_pub = self.create_publisher(NormalizedSteeringCommand, "actuators/steering_normalized", 1)
-        self.odom_sub = self.create_subscription(Odometry, "sensors/localization/filtered_map", self.on_odom, 10)
-        self.service_client = self.create_service(DrivingManeuver, "driving_maneuver", self.drive)
+        self.odom_sub = self.create_subscription(Odometry, "simulation/odom_ground_truth", self.on_odom, 10)
+        self.service_client = self.create_service(DrivingManeuver, "driving_maneuver", self.drive,
+                                                  callback_group=MutuallyExclusiveCallbackGroup())
 
     # calculates the distance if maneuver is active
     def on_odom(self, msg):
-        if self.odom is None and not self.active:
+        if self.odom is None or not self.active:
             self.odom = msg
             return
 
@@ -93,9 +96,11 @@ class DriveControl(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    rclpy.spin(DriveControl())
+    executor = MultiThreadedExecutor(num_threads=10)
+    executor.add_node(DriveControl())
+    executor.spin()
+    executor.shutdown()
     rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()

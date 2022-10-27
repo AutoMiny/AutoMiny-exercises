@@ -15,4 +15,6 @@ install(DIRECTORY launch
         DESTINATION share/${PROJECT_NAME}
 )
 
+install(PROGRAMS src/parking_maneuver.py DESTINATION lib/${PROJECT_NAME})
+
 ament_package()

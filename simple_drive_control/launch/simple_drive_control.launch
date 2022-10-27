@@ -3,7 +3,7 @@
 	<arg name="speed_rpm" default="0.3" />
 
 	<node name="simple_drive_control" pkg="simple_drive_control" exec="drive_control.py" output="screen">
-		<param name="speed_rpm" value="$(arg speed_rpm)" />
+		<param name="speed_rpm" value="$(var speed_rpm)" />
 	</node>
 </launch>
 

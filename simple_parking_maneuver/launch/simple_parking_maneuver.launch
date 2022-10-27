@@ -7,7 +7,7 @@
 	
 	<node name="simple_drive_control" pkg="simple_drive_control" 
 		exec="drive_control.py" output="screen">
-		<param name="speed_rpm" value="0.2" />
+		<param name="speed_rpm" value="0.3" />
 	</node>
 
 </launch>

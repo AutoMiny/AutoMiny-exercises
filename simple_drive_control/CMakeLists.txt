@@ -13,4 +13,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 install(DIRECTORY launch
         DESTINATION share/${PROJECT_NAME})
 
+install(PROGRAMS src/drive_control.py DESTINATION lib/${PROJECT_NAME})
+
 ament_package()
